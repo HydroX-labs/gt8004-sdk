@@ -2,11 +2,18 @@
 
 from typing import Optional, List, Dict
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+
+def _to_camel(name: str) -> str:
+    parts = name.split("_")
+    return parts[0] + "".join(p.capitalize() for p in parts[1:])
 
 
 class RequestLogEntry(BaseModel):
     """A single request log entry to be sent to GT8004 analytics."""
+
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True)
 
     request_id: str
     method: str
@@ -49,6 +56,8 @@ class RequestLogEntry(BaseModel):
 
 class LogBatch(BaseModel):
     """A batch of log entries to send to the ingest API."""
+
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True)
 
     agent_id: str
     sdk_version: str = "python-0.2.0"

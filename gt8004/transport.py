@@ -74,7 +74,7 @@ class BatchTransport:
             try:
                 response = await self.client.post(
                     self.ingest_url,
-                    json=batch.dict(),
+                    json=batch.model_dump(by_alias=True, exclude_none=True),
                     headers={"Authorization": f"Bearer {self.api_key}"}
                 )
                 response.raise_for_status()

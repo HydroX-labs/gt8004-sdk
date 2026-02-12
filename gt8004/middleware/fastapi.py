@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
 from ..types import RequestLogEntry
 
+_BODY_LIMIT = 16384  # 16 KB
+
 
 class GT8004Middleware(BaseHTTPMiddleware):
     """
@@ -31,43 +33,50 @@ class GT8004Middleware(BaseHTTPMiddleware):
     """
 
     def __init__(self, app, logger: "GT8004Logger"):
-        """
-        Initialize the middleware.
-
-        Args:
-            app: FastAPI application
-            logger: GT8004Logger instance
-        """
         super().__init__(app)
         self.logger = logger
 
     async def dispatch(self, request: Request, call_next):
-        """
-        Process each request and log it to GT8004.
-
-        Args:
-            request: Incoming FastAPI request
-            call_next: Next middleware/route handler
-
-        Returns:
-            Response from the route handler
-        """
-        # Start timing
         start_time = time.time()
         request_id = str(uuid.uuid4())
 
-        # Capture request body (optional, limited size)
+        # Capture request body
         request_body = None
-        if request.method in ["POST", "PUT", "PATCH"]:
+        request_body_size = 0
+        if request.method in ("POST", "PUT", "PATCH"):
             try:
                 body_bytes = await request.body()
-                if len(body_bytes) <= 16384:  # 16KB limit
-                    request_body = body_bytes.decode('utf-8', errors='ignore')
+                request_body_size = len(body_bytes)
+                if request_body_size <= _BODY_LIMIT:
+                    request_body = body_bytes.decode("utf-8", errors="ignore")
             except Exception:
                 pass
 
         # Process request
         response = await call_next(request)
+
+        # Capture response body by reading the streaming response
+        response_body = None
+        response_body_size = 0
+        try:
+            body_chunks: list[bytes] = []
+            async for chunk in response.body_iterator:
+                if isinstance(chunk, str):
+                    chunk = chunk.encode("utf-8")
+                body_chunks.append(chunk)
+            raw = b"".join(body_chunks)
+            response_body_size = len(raw)
+            if response_body_size <= _BODY_LIMIT:
+                response_body = raw.decode("utf-8", errors="ignore")
+            # Re-create response with the consumed body
+            response = Response(
+                content=raw,
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                media_type=response.media_type,
+            )
+        except Exception:
+            pass
 
         # Calculate response time
         response_time = (time.time() - start_time) * 1000  # ms
@@ -87,9 +96,12 @@ class GT8004Middleware(BaseHTTPMiddleware):
             status_code=response.status_code,
             response_ms=response_time,
             request_body=request_body,
+            request_body_size=request_body_size,
+            response_body=response_body,
+            response_body_size=response_body_size,
             headers=headers if headers else None,
             ip_address=request.client.host if request.client else None,
-            timestamp=datetime.utcnow().isoformat() + "Z"
+            timestamp=datetime.utcnow().isoformat() + "Z",
         )
 
         # Log asynchronously
