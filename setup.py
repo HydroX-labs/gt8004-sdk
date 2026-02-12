@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="gt8004-sdk",
-    version="0.1.0",
+    version="0.2.0",
     author="GT8004 Team",
     author_email="support@gt8004.com",
     description="Python SDK for GT8004 agent analytics and observability",

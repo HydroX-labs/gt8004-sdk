@@ -1,7 +1,11 @@
 """Main GT8004 logger class."""
 
+import logging
+
 from .transport import BatchTransport
 from .types import RequestLogEntry
+
+_log = logging.getLogger("gt8004")
 
 
 class GT8004Logger:
@@ -14,6 +18,9 @@ class GT8004Logger:
             api_key="your-api-key"
         )
         logger.transport.start_auto_flush()
+
+        # Verify connection on startup
+        ok = await logger.verify_connection()
 
         # In FastAPI middleware
         await logger.log(entry)
@@ -49,6 +56,36 @@ class GT8004Logger:
             batch_size=batch_size,
             flush_interval=flush_interval,
         )
+
+    async def verify_connection(self) -> bool:
+        """
+        Send a startup ping to the ingest endpoint to verify connectivity.
+
+        Sends a single synthetic log entry with source="sdk_ping" so the
+        platform can confirm this agent is connected.
+
+        Returns:
+            True if the ingest endpoint accepted the ping, False otherwise.
+        """
+        from datetime import datetime
+
+        entry = RequestLogEntry(
+            request_id="startup-ping",
+            method="PING",
+            path="/_sdk/startup",
+            status_code=0,
+            response_ms=0,
+            source="sdk_ping",
+            timestamp=datetime.utcnow().isoformat() + "Z",
+        )
+        try:
+            await self.transport.add(entry)
+            await self.transport.flush()
+            _log.info("GT8004 SDK: startup ping sent to %s", self.transport.ingest_url)
+            return True
+        except Exception as e:
+            _log.warning("GT8004 SDK: startup ping failed: %s", e)
+            return False
 
     async def log(self, entry: RequestLogEntry) -> None:
         """

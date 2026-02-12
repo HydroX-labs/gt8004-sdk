@@ -51,5 +51,5 @@ class LogBatch(BaseModel):
     """A batch of log entries to send to the ingest API."""
 
     agent_id: str
-    sdk_version: str = "python-0.1.0"
+    sdk_version: str = "python-0.2.0"
     entries: List[RequestLogEntry]

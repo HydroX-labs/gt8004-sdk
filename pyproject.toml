@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gt8004-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python SDK for GT8004 agent analytics and observability"
 readme = "README.md"
 requires-python = ">=3.8"

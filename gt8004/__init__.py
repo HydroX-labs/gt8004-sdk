@@ -4,5 +4,5 @@ from .logger import GT8004Logger
 from .types import RequestLogEntry, LogBatch
 from .transport import BatchTransport
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = ["GT8004Logger", "RequestLogEntry", "LogBatch", "BatchTransport"]

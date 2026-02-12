@@ -73,6 +73,13 @@ class GT8004Middleware(BaseHTTPMiddleware):
         response_time = (time.time() - start_time) * 1000  # ms
 
         # Create log entry
+        raw_headers = {
+            "user-agent": request.headers.get("user-agent"),
+            "content-type": request.headers.get("content-type"),
+            "referer": request.headers.get("referer"),
+        }
+        headers = {k: v for k, v in raw_headers.items() if v is not None}
+
         entry = RequestLogEntry(
             request_id=request_id,
             method=request.method,
@@ -80,11 +87,7 @@ class GT8004Middleware(BaseHTTPMiddleware):
             status_code=response.status_code,
             response_ms=response_time,
             request_body=request_body,
-            headers={
-                "user-agent": request.headers.get("user-agent"),
-                "content-type": request.headers.get("content-type"),
-                "referer": request.headers.get("referer"),
-            },
+            headers=headers if headers else None,
             ip_address=request.client.host if request.client else None,
             timestamp=datetime.utcnow().isoformat() + "Z"
         )
