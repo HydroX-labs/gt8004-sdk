@@ -26,7 +26,7 @@ class GT8004Logger:
         self,
         agent_id: str,
         api_key: str,
-        ingest_url: str = "http://localhost:9093/v1/ingest",
+        ingest_url: str = "http://localhost:9092/v1/ingest",
         batch_size: int = 50,
         flush_interval: float = 5.0,
     ):
@@ -36,7 +36,7 @@ class GT8004Logger:
         Args:
             agent_id: Your GT8004 agent ID
             api_key: Your GT8004 API key
-            ingest_url: GT8004 ingest API endpoint (default: localhost:9093)
+            ingest_url: GT8004 ingest API endpoint (default: localhost:9092)
             batch_size: Number of entries before auto-flush (default: 50)
             flush_interval: Seconds between auto-flushes (default: 5.0)
         """
