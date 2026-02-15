@@ -29,7 +29,7 @@ class GT8004Logger:
         await logger.close()
     """
 
-    VALID_PROTOCOLS = ("http", "mcp", "a2a")
+    VALID_PROTOCOLS = ("mcp", "a2a")
 
     def __init__(
         self,
@@ -38,7 +38,7 @@ class GT8004Logger:
         ingest_url: str = "http://localhost:9092/v1/ingest",
         batch_size: int = 50,
         flush_interval: float = 5.0,
-        protocol: str = "http",
+        protocol: str | None = None,
     ):
         """
         Initialize the GT8004 logger.
@@ -49,9 +49,9 @@ class GT8004Logger:
             ingest_url: GT8004 ingest API endpoint (default: localhost:9092)
             batch_size: Number of entries before auto-flush (default: 50)
             flush_interval: Seconds between auto-flushes (default: 5.0)
-            protocol: Protocol type - "http", "mcp", or "a2a" (default: "http")
+            protocol: Protocol type - "mcp" or "a2a" (default: None for plain HTTP)
         """
-        if protocol not in self.VALID_PROTOCOLS:
+        if protocol is not None and protocol not in self.VALID_PROTOCOLS:
             raise ValueError(f"protocol must be one of {self.VALID_PROTOCOLS}, got '{protocol}'")
         self.agent_id = agent_id
         self.api_key = api_key
