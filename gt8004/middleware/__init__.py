@@ -1,8 +1,13 @@
 """Middleware integrations for GT8004 SDK."""
 
-from .fastapi import GT8004Middleware
+__all__ = []
 
-__all__ = ["GT8004Middleware"]
+# Optional: FastAPI/ASGI middleware (requires fastapi)
+try:
+    from .fastapi import GT8004Middleware
+    __all__.append("GT8004Middleware")
+except ImportError:
+    pass
 
 # Optional: FastMCP middleware (requires fastmcp)
 try:
