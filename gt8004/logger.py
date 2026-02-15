@@ -29,6 +29,8 @@ class GT8004Logger:
         await logger.close()
     """
 
+    VALID_PROTOCOLS = ("http", "mcp", "a2a")
+
     def __init__(
         self,
         agent_id: str,
@@ -36,6 +38,7 @@ class GT8004Logger:
         ingest_url: str = "http://localhost:9092/v1/ingest",
         batch_size: int = 50,
         flush_interval: float = 5.0,
+        protocol: str = "http",
     ):
         """
         Initialize the GT8004 logger.
@@ -46,9 +49,13 @@ class GT8004Logger:
             ingest_url: GT8004 ingest API endpoint (default: localhost:9092)
             batch_size: Number of entries before auto-flush (default: 50)
             flush_interval: Seconds between auto-flushes (default: 5.0)
+            protocol: Protocol type - "http", "mcp", or "a2a" (default: "http")
         """
+        if protocol not in self.VALID_PROTOCOLS:
+            raise ValueError(f"protocol must be one of {self.VALID_PROTOCOLS}, got '{protocol}'")
         self.agent_id = agent_id
         self.api_key = api_key
+        self.protocol = protocol
         self.transport = BatchTransport(
             ingest_url=ingest_url,
             api_key=api_key,
@@ -91,9 +98,13 @@ class GT8004Logger:
         """
         Add a log entry to the batch queue.
 
+        Automatically sets the protocol field if not already set.
+
         Args:
             entry: The RequestLogEntry to log
         """
+        if not entry.protocol:
+            entry.protocol = self.protocol
         await self.transport.add(entry)
 
     async def flush(self) -> None:

@@ -45,7 +45,7 @@ class RequestLogEntry(BaseModel):
     referer: Optional[str] = None
     content_type: Optional[str] = None
     accept_language: Optional[str] = None
-    protocol: Optional[str] = None
+    protocol: Optional[str] = Field(None, pattern=r"^(http|mcp|a2a)$")
 
     # Source identifier
     source: str = "sdk"

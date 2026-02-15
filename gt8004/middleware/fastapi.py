@@ -1,5 +1,6 @@
 """FastAPI middleware for GT8004 request logging."""
 
+import json
 import time
 import uuid
 from typing import TYPE_CHECKING
@@ -16,18 +17,64 @@ from ..types import RequestLogEntry
 _BODY_LIMIT = 16384  # 16 KB
 
 
+def _extract_mcp_tool_name(body: str | None) -> str | None:
+    """Extract tool name from MCP JSON-RPC request body."""
+    if not body:
+        return None
+    try:
+        data = json.loads(body)
+        if data.get("method") == "tools/call":
+            return data.get("params", {}).get("name")
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        pass
+    return None
+
+
+def _extract_a2a_tool_name(body: str | None, path: str) -> str | None:
+    """Extract skill/tool name from A2A request body or path."""
+    if body:
+        try:
+            data = json.loads(body)
+            skill = data.get("skill_id")
+            if skill:
+                return skill
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            pass
+    # Fallback: last path segment
+    segments = path.rstrip("/").split("/")
+    return segments[-1] if segments else None
+
+
+def _extract_http_tool_name(path: str) -> str | None:
+    """Extract tool name from HTTP path (last meaningful segment)."""
+    segments = path.rstrip("/").split("/")
+    return segments[-1] if segments else None
+
+
 class GT8004Middleware(BaseHTTPMiddleware):
     """
     FastAPI middleware that automatically logs requests to GT8004.
+
+    Supports protocol-aware tool name extraction:
+    - protocol="http": extracts tool name from URL path
+    - protocol="mcp": extracts tool name from JSON-RPC body (tools/call)
+    - protocol="a2a": extracts skill_id from request body
 
     Usage:
         from fastapi import FastAPI
         from gt8004 import GT8004Logger
         from gt8004.middleware.fastapi import GT8004Middleware
 
+        # HTTP API (default)
         logger = GT8004Logger(agent_id="...", api_key="...")
-        logger.transport.start_auto_flush()
 
+        # MCP Server
+        logger = GT8004Logger(agent_id="...", api_key="...", protocol="mcp")
+
+        # A2A Server
+        logger = GT8004Logger(agent_id="...", api_key="...", protocol="a2a")
+
+        logger.transport.start_auto_flush()
         app = FastAPI()
         app.add_middleware(GT8004Middleware, logger=logger)
     """
@@ -81,6 +128,17 @@ class GT8004Middleware(BaseHTTPMiddleware):
         # Calculate response time
         response_time = (time.time() - start_time) * 1000  # ms
 
+        # Protocol-specific tool name extraction
+        protocol = self.logger.protocol
+        path = str(request.url.path)
+
+        if protocol == "mcp":
+            tool_name = _extract_mcp_tool_name(request_body)
+        elif protocol == "a2a":
+            tool_name = _extract_a2a_tool_name(request_body, path)
+        else:
+            tool_name = _extract_http_tool_name(path)
+
         # Create log entry
         raw_headers = {
             "user-agent": request.headers.get("user-agent"),
@@ -92,9 +150,11 @@ class GT8004Middleware(BaseHTTPMiddleware):
         entry = RequestLogEntry(
             request_id=request_id,
             method=request.method,
-            path=str(request.url.path),
+            path=path,
             status_code=response.status_code,
             response_ms=response_time,
+            tool_name=tool_name,
+            protocol=protocol,
             request_body=request_body,
             request_body_size=request_body_size,
             response_body=response_body,

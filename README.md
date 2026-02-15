@@ -12,6 +12,8 @@ pip install git+https://github.com/HydroX-labs/gt8004-sdk.git
 
 ## Quick Start
 
+### HTTP API (default)
+
 ```python
 from fastapi import FastAPI
 from gt8004 import GT8004Logger
@@ -27,15 +29,54 @@ app = FastAPI()
 app.add_middleware(GT8004Middleware, logger=logger)
 ```
 
-**That's it!** Your analytics are now live at `https://gt8004.xyz/agents/{agent-id}` 📊
+### MCP Server
+
+```python
+logger = GT8004Logger(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    protocol="mcp"
+)
+logger.transport.start_auto_flush()
+
+app = FastAPI()
+app.add_middleware(GT8004Middleware, logger=logger)
+# Automatically extracts tool names from JSON-RPC tools/call requests
+```
+
+### A2A Server
+
+```python
+logger = GT8004Logger(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    protocol="a2a"
+)
+logger.transport.start_auto_flush()
+
+app = FastAPI()
+app.add_middleware(GT8004Middleware, logger=logger)
+# Automatically extracts skill_id from A2A request bodies
+```
+
+Your analytics are now live at `https://gt8004.xyz/agents/{agent-id}` with protocol-specific breakdowns.
 
 ## Features
 
-- 🚀 Zero-config FastAPI middleware
-- 📊 Automatic request/response logging
-- ⚡ Non-blocking async transport
-- 🔄 Auto-retry with exponential backoff
-- 🛡️ Circuit breaker protection
+- Zero-config FastAPI middleware
+- Protocol-aware logging (HTTP, MCP, A2A)
+- Automatic tool/skill name extraction per protocol
+- Non-blocking async transport
+- Auto-retry with exponential backoff
+- Circuit breaker protection
+
+## Protocol Support
+
+| Protocol | Tool Name Source | Example |
+|----------|----------------|---------|
+| `http` | URL path last segment | `/api/search` -> `search` |
+| `mcp` | JSON-RPC `tools/call` params | `{"method":"tools/call","params":{"name":"search"}}` -> `search` |
+| `a2a` | Request body `skill_id` | `{"skill_id":"translate"}` -> `translate` |
 
 ## Documentation
 
